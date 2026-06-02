@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>/ts-/ 聲母俄羅斯方塊</title>
+    <title>語音治療遊戲：/ts-/ 聲母俄羅斯方塊</title>
     <style>
         :root {
             --primary: #3b82f6;
@@ -157,7 +157,7 @@
 </head>
 <body>
 
-    <h1>/ts-/ 聲母發音練習</h1>
+    <h1>/ts-/ 聲母發音練習：俄羅斯方塊</h1>
     
     <div class="game-container">
         <div class="stats">
@@ -183,7 +183,7 @@
         <div class="modal-content">
             <h2 class="modal-title">語音治療方塊遊戲</h2>
             <p style="font-size: 1.2rem; color: #475569; margin-bottom: 20px;">
-                每疊起 3 或 4 個方塊，遊戲會暫停並顯示練習詞語。<br>運用詞語組成句子後點擊繼續！
+                每疊起 3 或 4 個方塊，遊戲會暫停並顯示練習詞語。<br>讀出詞語後點擊繼續！
             </p>
             <button class="continue-btn" id="startBtn">開始遊戲</button>
         </div>
@@ -214,7 +214,7 @@
         { emoji: '', name: '阻攔' }, { emoji: '', name: '高真' }, { emoji: '', name: '建築' },
         { emoji: '', name: '傳揚' }, { emoji: '', name: '富足' }, { emoji: '', name: '屯駐' },
         { emoji: '', name: '玄奘（音：狀）' }, { emoji: '', name: '鑒證' }, { emoji: '', name: '唐三藏' },
-        { emoji: '', name: '意志' }, { emoji: '', name: '使眾人折服' }, { emoji: '', name: '貞觀三年' },
+        { emoji: '', name: '意志' }, { emoji: '', name: '使衆人折服' }, { emoji: '', name: '貞觀三年' },
         { emoji: '', name: '名著' }, { emoji: '', name: '經濟' }, { emoji: '', name: '聚星樓' },
         { emoji: '', name: '一國兩制' }, { emoji: '', name: '資訊科技' }, { emoji: '', name: '張保仔' },
         { emoji: '', name: '正面影響' },
@@ -603,19 +603,12 @@
         update();
     });
 
-    // 螢幕控制按鈕
-    document.getElementById('btnLeft').addEventListener('mousedown', (e) => { e.preventDefault(); playerMove(-1); draw(); });
-    document.getElementById('btnRight').addEventListener('mousedown', (e) => { e.preventDefault(); playerMove(1); draw(); });
-    document.getElementById('btnUp').addEventListener('mousedown', (e) => { e.preventDefault(); playerRotate(); draw(); });
-    document.getElementById('btnDown').addEventListener('mousedown', (e) => { e.preventDefault(); playerDrop(); draw(); });
-    document.getElementById('btnDrop').addEventListener('mousedown', (e) => { e.preventDefault(); playerHardDrop(); draw(); });
-    
-    // 支援 Touch 事件 (給平板)
-    document.getElementById('btnLeft').addEventListener('touchstart', (e) => { e.preventDefault(); playerMove(-1); draw(); });
-    document.getElementById('btnRight').addEventListener('touchstart', (e) => { e.preventDefault(); playerMove(1); draw(); });
-    document.getElementById('btnUp').addEventListener('touchstart', (e) => { e.preventDefault(); playerRotate(); draw(); });
-    document.getElementById('btnDown').addEventListener('touchstart', (e) => { e.preventDefault(); playerDrop(); draw(); });
-    document.getElementById('btnDrop').addEventListener('touchstart', (e) => { e.preventDefault(); playerHardDrop(); draw(); });
+    // 統一使用 pointerdown 處理滑鼠與觸控，避免雙重觸發導致一次旋轉180度
+    document.getElementById('btnLeft').addEventListener('pointerdown', (e) => { e.preventDefault(); playerMove(-1); draw(); });
+    document.getElementById('btnRight').addEventListener('pointerdown', (e) => { e.preventDefault(); playerMove(1); draw(); });
+    document.getElementById('btnUp').addEventListener('pointerdown', (e) => { e.preventDefault(); playerRotate(); draw(); });
+    document.getElementById('btnDown').addEventListener('pointerdown', (e) => { e.preventDefault(); playerDrop(); draw(); });
+    document.getElementById('btnDrop').addEventListener('pointerdown', (e) => { e.preventDefault(); playerHardDrop(); draw(); });
 
     // --- 畫布滑動手勢控制 (Swipe & Tap) ---
     let touchStartX = 0;
