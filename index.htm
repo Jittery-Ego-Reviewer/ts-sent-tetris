@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>/ts-/ 聲母俄羅斯方塊</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --bg-color: #f0f8ff;
+        }
+        body {
+            font-family: "PingFang HK", "Microsoft JhengHei", sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            touch-action: manipulation;
+        }
+        h1 {
+            color: #1e3a8a;
+            margin: 10px 0;
+            font-size: 1.5rem;
+            text-align: center;
+        }
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            width: 100%;
+            max-width: 400px;
+            padding: 0 15px;
+            box-sizing: border-box;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            max-width: 350px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #333;
+        }
+        canvas {
+            background-color: #1e293b;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            border: 4px solid #334155;
+            width: 100%;
+            max-width: 350px;
+            height: auto;
+            aspect-ratio: 10 / 20;
+            touch-action: none;
+        }
+        
+        /* 螢幕按鈕 (供平板或手機使用) */
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+            width: 100%;
+            max-width: 350px;
+        }
+        .controls button {
+            background-color: #e2e8f0;
+            border: 2px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 15px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            user-select: none;
+        }
+        .controls button:active {
+            background-color: #cbd5e1;
+        }
+        .btn-up { grid-column: 2; }
+        .btn-left { grid-column: 1; }
+        .btn-down { grid-column: 2; }
+        .btn-right { grid-column: 3; }
+        .btn-drop { grid-column: 1 / 4; background-color: #bfdbfe !important; border-color: #93c5fd !important; }
+
+        /* 彈出視窗 (Modal) */
+        .modal-overlay {
+            display: flex;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.85);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 450px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        .modal-title {
+            font-size: 1.6rem;
+            color: #1e3a8a;
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+        .word-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 25px;
+        }
+        .word-item {
+            background: #e0f2fe;
+            padding: 15px;
+            border-radius: 12px;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #0c4a6e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            border: 2px solid #bae6fd;
+        }
+        .continue-btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.4rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.1s, background-color 0.2s;
+        }
+        .continue-btn:hover { background-color: #2563eb; }
+        .continue-btn:active { transform: scale(0.96); }
+
+        #startScreen {
+            flex-direction: column;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>/ts-/ 聲母發音練習</h1>
+    
+    <div class="game-container">
+        <div class="stats">
+            <span>分數: <span id="score">0</span></span>
+            <span>行數: <span id="lines">0</span></span>
+        </div>
+        
+        <!-- 遊戲畫布 (10行 x 20列，每個方塊30px) -->
+        <canvas id="tetris" width="300" height="600"></canvas>
+        
+        <!-- 控制按鈕 -->
+        <div class="controls">
+            <button class="btn-left" id="btnLeft">⬅️</button>
+            <button class="btn-up" id="btnUp">🔄</button>
+            <button class="btn-right" id="btnRight">➡️</button>
+            <button class="btn-down" id="btnDown">⬇️</button>
+            <button class="btn-drop" id="btnDrop">⏬ 直接落下</button>
+        </div>
+    </div>
+
+    <!-- 啟動視窗 -->
+    <div class="modal-overlay active" id="startScreen">
+        <div class="modal-content">
+            <h2 class="modal-title">語音治療方塊遊戲</h2>
+            <p style="font-size: 1.2rem; color: #475569; margin-bottom: 20px;">
+                每疊起 3 或 4 個方塊，遊戲會暫停並顯示練習詞語。<br>運用詞語組成句子後點擊繼續！
+            </p>
+            <button class="continue-btn" id="startBtn">開始遊戲</button>
+        </div>
+    </div>
+
+    <!-- 訓練詞語彈出視窗 -->
+    <div class="modal-overlay" id="wordModal">
+        <div class="modal-content">
+            <div class="word-list" id="wordListContainer">
+                <!-- 詞語會由 JS 動態生成 -->
+            </div>
+            <button class="continue-btn" id="continueBtn">繼續 (Continue)</button>
+        </div>
+    </div>
+
+    <!-- 遊戲結束視窗 -->
+    <div class="modal-overlay" id="gameOverModal">
+        <div class="modal-content">
+            <h2 class="modal-title" style="color: #ef4444;">遊戲結束</h2>
+            <p style="font-size: 1.5rem; margin-bottom: 20px;">最終分數: <span id="finalScore">0</span></p>
+            <button class="continue-btn" id="restartBtn">重新開始</button>
+        </div>
+    </div>
+
+<script>
+    // --- 訓練字詞庫 (由治療師提供) ---
+    const allWords = [
+        { emoji: '', name: '阻攔' }, { emoji: '', name: '高真' }, { emoji: '', name: '建築' },
+        { emoji: '', name: '傳揚' }, { emoji: '', name: '富足' }, { emoji: '', name: '屯駐' },
+        { emoji: '', name: '玄奘' }, { emoji: '', name: '鑒證/真' }, { emoji: '', name: '唐三藏' },
+        { emoji: '', name: '意志' }, { emoji: '', name: '使衆人折服' }, { emoji: '', name: '貞觀三年' },
+        { emoji: '', name: '名著' }, { emoji: '', name: '經濟' }, { emoji: '', name: '聚星樓' },
+        { emoji: '', name: '一國兩制' }, { emoji: '', name: '資訊科技' }, { emoji: '', name: '張保仔' },
+        { emoji: '', name: '正面影響' },
+        { emoji: '🫘', name: '種子' }, { emoji: '🌱', name: '種植' }, { emoji: '🍙🌿', name: '粽子' },
+        { emoji: '📄', name: '紙張' }, { emoji: '🙋', name: '自己' }, { emoji: '🟣', name: '紫糯米' },
+        { emoji: '🤧', name: '紙巾' }, { emoji: '➡️', name: '直接' }, { emoji: '🧠', name: '知道' },
+        { emoji: '🧀', name: '芝士' }, { emoji: '💜', name: '紫色' }, { emoji: '🧻', name: '廁紙' },
+        { emoji: '🌵', name: '仙人掌' }, { emoji: '🧋', name: '珍珠奶茶' }, { emoji: '🧃', name: '果汁' },
+        { emoji: '🐷', name: '豬' }, { emoji: '🐖', name: '一隻豬' }, { emoji: '🐗', name: '野豬' },
+        { emoji: '🐥', name: '雞仔' }, { emoji: '🪳', name: '曱甴' }, { emoji: '🕷️', name: '蜘蛛' },
+        { emoji: '🕸️', name: '蜘蛛網' }, { emoji: '🦂', name: '蠍子' }, { emoji: '👀', name: '眼睛' },
+        { emoji: '🕵️', name: '偵探' }, { emoji: '🚶‍➡️', name: '走路' }, { emoji: '🧘', name: '打坐' },
+        { emoji: '🤳', name: '自拍' }, { emoji: '🎋', name: '竹' }, { emoji: '🪡', name: '針線' },
+        { emoji: '💎', name: '鑽石' }, { emoji: '💍', name: '鑽石戒指' }, { emoji: '⚽', name: '足球' },
+        { emoji: '🪁', name: '風箏' }, { emoji: '💣', name: '炸彈' }, { emoji: '⏰', name: '鬧鐘' },
+        { emoji: '🍳', name: '煎蛋' }, { emoji: '🥪', name: '三文治' }, { emoji: '🍫', name: '朱古力' },
+        { emoji: '🍪', name: '朱古力曲奇餅' }, { emoji: '🍩', name: '朱古力味甜甜圈' }, { emoji: '🍇', name: '提子' },
+        { emoji: '🫑', name: '青椒' }, { emoji: '🥀', name: '凋謝' }, { emoji: '🧭', name: '指南針' },
+        { emoji: '🗽', name: '自由神像' }, { emoji: '🌳', name: '樹上的樹枝' }
+    ];
+
+    // --- 音效系統 (Web Audio API) ---
+    let audioCtx;
+    function initAudio() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        }
+    }
+
+    function playSound(type) {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        const now = audioCtx.currentTime;
+        if (type === 'stack') {
+            // 低沉的「咚」聲
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(150, now);
+            osc.frequency.exponentialRampToValueAtTime(40, now + 0.1);
+            gainNode.gain.setValueAtTime(0.5, now);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+            osc.start(now);
+            osc.stop(now + 0.1);
+        } else if (type === 'clear') {
+            // 清脆的消除聲 (和弦琶音)
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(440, now);        // A4
+            osc.frequency.setValueAtTime(554.37, now + 0.1); // C#5
+            osc.frequency.setValueAtTime(659.25, now + 0.2); // E5
+            osc.frequency.setValueAtTime(880, now + 0.3);    // A5
+            
+            gainNode.gain.setValueAtTime(0, now);
+            gainNode.gain.linearRampToValueAtTime(0.3, now + 0.05);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+            
+            osc.start(now);
+            osc.stop(now + 0.4);
+        }
+    }
+
+    // --- 俄羅斯方塊設定 ---
+    const canvas = document.getElementById('tetris');
+    const ctx = canvas.getContext('2d');
+    const COLS = 10;
+    const ROWS = 20;
+    const BLOCK_SIZE = 30; // 300px / 10
+
+    // 形狀顏色對應
+    const COLORS = [
+        null,
+        '#06b6d4', // I - 青色
+        '#3b82f6', // J - 藍色
+        '#f97316', // L - 橙色
+        '#eab308', // O - 黃色
+        '#22c55e', // S - 綠色
+        '#a855f7', // T - 紫色
+        '#ef4444'  // Z - 紅色
+    ];
+
+    const PIECES = [
+        [],
+        [[0,0,0,0], [1,1,1,1], [0,0,0,0], [0,0,0,0]], // I (1)
+        [[2,0,0], [2,2,2], [0,0,0]],                   // J (2)
+        [[0,0,3], [3,3,3], [0,0,0]],                   // L (3)
+        [[4,4], [4,4]],                                // O (4)
+        [[0,5,5], [5,5,0], [0,0,0]],                   // S (5)
+        [[0,6,0], [6,6,6], [0,0,0]],                   // T (6)
+        [[7,7,0], [0,7,7], [0,0,0]]                    // Z (7)
+    ];
+
+    let board = [];
+    let piece = null;
+    let dropCounter = 0;
+    let dropInterval = 1000;
+    let lastTime = 0;
+    let animationId;
+    
+    // 遊戲狀態與治療相關變數
+    let score = 0;
+    let linesCleared = 0;
+    let isPaused = true;
+    let isGameOver = false;
+    
+    let stackCount = 0;
+    let targetStacks = 3; // 初始設定3次，之後會在3~4之間隨機
+
+    // --- 初始化板塊 ---
+    function createMatrix(w, h) {
+        const matrix = [];
+        while (h--) {
+            matrix.push(new Array(w).fill(0));
+        }
+        return matrix;
+    }
+
+    // --- 碰撞檢測 ---
+    function collide(board, playerPiece) {
+        const [m, o] = [playerPiece.matrix, playerPiece.pos];
+        for (let y = 0; y < m.length; ++y) {
+            for (let x = 0; x < m[y].length; ++x) {
+                if (m[y][x] !== 0 &&
+                   (board[y + o.y] && board[y + o.y][x + o.x]) !== 0) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // --- 生成新方塊 ---
+    function playerReset() {
+        const types = [1, 2, 3, 4, 5, 6, 7];
+        const typeId = types[Math.floor(Math.random() * types.length)];
+        piece = {
+            matrix: JSON.parse(JSON.stringify(PIECES[typeId])),
+            pos: {x: 0, y: 0}
+        };
+        piece.pos.y = 0;
+        piece.pos.x = Math.floor(COLS / 2) - Math.floor(piece.matrix[0].length / 2);
+        
+        // 檢查是否一生成就碰撞 (遊戲結束)
+        if (collide(board, piece)) {
+            gameOver();
+        }
+    }
+
+    // --- 將方塊固定到底盤 ---
+    function merge(board, playerPiece) {
+        playerPiece.matrix.forEach((row, y) => {
+            row.forEach((value, x) => {
+                if (value !== 0) {
+                    board[y + playerPiece.pos.y][x + playerPiece.pos.x] = value;
+                }
+            });
+        });
+    }
+
+    // --- 繪製方塊 ---
+    function drawMatrix(matrix, offset) {
+        matrix.forEach((row, y) => {
+            row.forEach((value, x) => {
+                if (value !== 0) {
+                    ctx.fillStyle = COLORS[value];
+                    ctx.fillRect((x + offset.x) * BLOCK_SIZE, (y + offset.y) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                    // 邊框立體感
+                    ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect((x + offset.x) * BLOCK_SIZE, (y + offset.y) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+                    ctx.fillRect((x + offset.x) * BLOCK_SIZE, (y + offset.y) * BLOCK_SIZE, BLOCK_SIZE, 4);
+                }
+            });
+        });
+    }
+
+    function draw() {
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // 畫格線
+        ctx.strokeStyle = '#334155';
+        ctx.lineWidth = 1;
+        for(let i=0; i<COLS; i++) {
+            for(let j=0; j<ROWS; j++) {
+                ctx.strokeRect(i*BLOCK_SIZE, j*BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+            }
+        }
+
+        drawMatrix(board, {x: 0, y: 0});
+        if (piece) drawMatrix(piece.matrix, piece.pos);
+    }
+
+    // --- 消除完整行 ---
+    function arenaSweep() {
+        let rowCount = 0;
+        outer: for (let y = board.length - 1; y >= 0; --y) {
+            for (let x = 0; x < board[y].length; ++x) {
+                if (board[y][x] === 0) {
+                    continue outer;
+                }
+            }
+            const row = board.splice(y, 1)[0].fill(0);
+            board.unshift(row);
+            ++y;
+            rowCount++;
+        }
+        if (rowCount > 0) {
+            playSound('clear');
+            linesCleared += rowCount;
+            score += rowCount * 100;
+            updateStats();
+            dropInterval = Math.max(200, 1000 - (linesCleared * 20)); // 加速
+        }
+    }
+
+    // --- 玩家操作邏輯 ---
+    function playerDrop() {
+        if(isPaused || isGameOver) return;
+        piece.pos.y++;
+        if (collide(board, piece)) {
+            piece.pos.y--;
+            merge(board, piece);
+            playSound('stack'); // 播放疊放音效
+            playerReset();
+            arenaSweep();
+            handleTherapyTrigger();
+        }
+        dropCounter = 0;
+    }
+
+    function playerMove(dir) {
+        if(isPaused || isGameOver) return;
+        piece.pos.x += dir;
+        if (collide(board, piece)) {
+            piece.pos.x -= dir;
+        }
+    }
+
+    function playerRotate() {
+        if(isPaused || isGameOver) return;
+        const pos = piece.pos.x;
+        let offset = 1;
+        rotate(piece.matrix);
+        // 踢牆 (Wall Kick)
+        while (collide(board, piece)) {
+            piece.pos.x += offset;
+            offset = -(offset + (offset > 0 ? 1 : -1));
+            if (offset > piece.matrix[0].length) {
+                rotate(piece.matrix, -1); // 轉不過去就轉回來
+                piece.pos.x = pos;
+                return;
+            }
+        }
+    }
+
+    function rotate(matrix, dir = 1) {
+        for (let y = 0; y < matrix.length; ++y) {
+            for (let x = 0; x < y; ++x) {
+                [matrix[x][y], matrix[y][x]] = [matrix[y][x], matrix[x][y]];
+            }
+        }
+        if (dir > 0) {
+            matrix.forEach(row => row.reverse());
+        } else {
+            matrix.reverse();
+        }
+    }
+
+    function playerHardDrop() {
+        if(isPaused || isGameOver) return;
+        while (!collide(board, piece)) {
+            piece.pos.y++;
+        }
+        piece.pos.y--;
+        merge(board, piece);
+        playSound('stack');
+        playerReset();
+        arenaSweep();
+        handleTherapyTrigger();
+        dropCounter = 0;
+    }
+
+    // --- 治療字詞觸發邏輯 ---
+    function handleTherapyTrigger() {
+        stackCount++;
+        if (stackCount >= targetStacks && !isGameOver) {
+            stackCount = 0;
+            targetStacks = Math.random() < 0.5 ? 3 : 4; // 隨機 3 或 4 次
+            showWordModal();
+        }
+    }
+
+    function showWordModal() {
+        isPaused = true;
+        
+        // 隨機選出4個詞語
+        const shuffled = [...allWords].sort(() => 0.5 - Math.random());
+        const selectedWords = shuffled.slice(0, 4);
+        
+        const container = document.getElementById('wordListContainer');
+        container.innerHTML = '';
+        
+        selectedWords.forEach(word => {
+            const div = document.createElement('div');
+            div.className = 'word-item';
+            div.innerHTML = `${word.emoji ? `<span>${word.emoji}</span>` : ''} <span>${word.name}</span>`;
+            container.appendChild(div);
+        });
+        
+        document.getElementById('wordModal').classList.add('active');
+    }
+
+    function hideWordModal() {
+        document.getElementById('wordModal').classList.remove('active');
+        isPaused = false;
+        lastTime = performance.now(); // 重置時間，防止瞬間掉落
+        requestAnimationFrame(update);
+    }
+
+    // --- 遊戲循環與狀態 ---
+    function update(time = 0) {
+        if (isPaused || isGameOver) return;
+        
+        const deltaTime = time - lastTime;
+        lastTime = time;
+        dropCounter += deltaTime;
+        
+        if (dropCounter > dropInterval) {
+            playerDrop();
+        }
+        
+        draw();
+        animationId = requestAnimationFrame(update);
+    }
+
+    function updateStats() {
+        document.getElementById('score').innerText = score;
+        document.getElementById('lines').innerText = linesCleared;
+    }
+
+    function gameOver() {
+        isGameOver = true;
+        isPaused = true;
+        document.getElementById('finalScore').innerText = score;
+        document.getElementById('gameOverModal').classList.add('active');
+        cancelAnimationFrame(animationId);
+    }
+
+    function resetGame() {
+        board = createMatrix(COLS, ROWS);
+        score = 0;
+        linesCleared = 0;
+        dropInterval = 1000;
+        stackCount = 0;
+        targetStacks = 3;
+        isGameOver = false;
+        updateStats();
+        playerReset();
+        lastTime = performance.now();
+    }
+
+    // --- 事件監聽 (按鈕 & 鍵盤) ---
+    document.getElementById('startBtn').addEventListener('click', () => {
+        initAudio();
+        document.getElementById('startScreen').classList.remove('active');
+        resetGame();
+        isPaused = false;
+        update();
+    });
+
+    document.getElementById('continueBtn').addEventListener('click', () => {
+        initAudio(); // 確保 iOS 等裝置能持續播放音效
+        hideWordModal();
+    });
+
+    document.getElementById('restartBtn').addEventListener('click', () => {
+        document.getElementById('gameOverModal').classList.remove('active');
+        resetGame();
+        isPaused = false;
+        update();
+    });
+
+    // 螢幕控制按鈕
+    document.getElementById('btnLeft').addEventListener('mousedown', (e) => { e.preventDefault(); playerMove(-1); draw(); });
+    document.getElementById('btnRight').addEventListener('mousedown', (e) => { e.preventDefault(); playerMove(1); draw(); });
+    document.getElementById('btnUp').addEventListener('mousedown', (e) => { e.preventDefault(); playerRotate(); draw(); });
+    document.getElementById('btnDown').addEventListener('mousedown', (e) => { e.preventDefault(); playerDrop(); draw(); });
+    document.getElementById('btnDrop').addEventListener('mousedown', (e) => { e.preventDefault(); playerHardDrop(); draw(); });
+    
+    // 支援 Touch 事件 (給平板)
+    document.getElementById('btnLeft').addEventListener('touchstart', (e) => { e.preventDefault(); playerMove(-1); draw(); });
+    document.getElementById('btnRight').addEventListener('touchstart', (e) => { e.preventDefault(); playerMove(1); draw(); });
+    document.getElementById('btnUp').addEventListener('touchstart', (e) => { e.preventDefault(); playerRotate(); draw(); });
+    document.getElementById('btnDown').addEventListener('touchstart', (e) => { e.preventDefault(); playerDrop(); draw(); });
+    document.getElementById('btnDrop').addEventListener('touchstart', (e) => { e.preventDefault(); playerHardDrop(); draw(); });
+
+    // --- 畫布滑動手勢控制 (Swipe & Tap) ---
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let lastTouchX = 0;
+    let lastTouchY = 0;
+    let touchMoved = false;
+
+    canvas.addEventListener('touchstart', (e) => {
+        if (isPaused || isGameOver) return;
+        e.preventDefault();
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        lastTouchX = touchStartX;
+        lastTouchY = touchStartY;
+        touchMoved = false;
+    }, { passive: false });
+
+    canvas.addEventListener('touchmove', (e) => {
+        if (isPaused || isGameOver) return;
+        e.preventDefault();
+
+        let currentX = e.touches[0].clientX;
+        let currentY = e.touches[0].clientY;
+        let diffX = currentX - lastTouchX;
+        let diffY = currentY - lastTouchY;
+
+        // 根據畫布實際顯示寬度計算滑動閾值 (1格的寬度)
+        let threshold = canvas.clientWidth / COLS;
+
+        // 左右滑動
+        if (Math.abs(diffX) > threshold) {
+            let steps = Math.floor(Math.abs(diffX) / threshold);
+            let dir = diffX > 0 ? 1 : -1;
+            for(let i=0; i<steps; i++) playerMove(dir);
+            lastTouchX += steps * threshold * dir;
+            touchMoved = true;
+            draw();
+        }
+
+        // 下滑加速
+        if (diffY > threshold) {
+            let steps = Math.floor(diffY / threshold);
+            for(let i=0; i<steps; i++) playerDrop();
+            lastTouchY += steps * threshold;
+            touchMoved = true;
+            draw();
+        }
+    }, { passive: false });
+
+    canvas.addEventListener('touchend', (e) => {
+        if (isPaused || isGameOver) return;
+        e.preventDefault();
+        
+        let endX = e.changedTouches[0].clientX;
+        let endY = e.changedTouches[0].clientY;
+        let totalDiffX = endX - touchStartX;
+        let totalDiffY = endY - touchStartY;
+
+        // 如果沒有明顯滑動，視為點擊 -> 旋轉
+        if (!touchMoved && Math.abs(totalDiffX) < 10 && Math.abs(totalDiffY) < 10) {
+            playerRotate();
+            draw();
+        } 
+        // 判斷快速上滑 -> 直接落下 (Hard Drop)
+        else if (totalDiffY < -40 && Math.abs(totalDiffY) > Math.abs(totalDiffX)) {
+            playerHardDrop();
+            draw();
+        }
+    }, { passive: false });
+
+    // 鍵盤控制
+    document.addEventListener('keydown', event => {
+        if (isPaused || isGameOver) return;
+        switch(event.keyCode) {
+            case 37: // Left
+                playerMove(-1); draw(); break;
+            case 39: // Right
+                playerMove(1); draw(); break;
+            case 40: // Down
+                playerDrop(); draw(); break;
+            case 38: // Up (Rotate)
+                playerRotate(); draw(); break;
+            case 32: // Space (Hard Drop)
+                playerHardDrop(); draw(); break;
+        }
+    });
+
+    // 初始繪製空背景
+    board = createMatrix(COLS, ROWS);
+    draw();
+</script>
+</body>
+</html>
